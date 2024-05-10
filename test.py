@@ -13,37 +13,39 @@ import torch
 # Custom packages
 from src.dataset import TinyImageNetDatasetModule
 from src.network import SimpleClassifier
-import src.config as cfg
+import hydra
+from omegaconf import DictConfig
 
 torch.set_float32_matmul_precision('medium')
 
 
-if __name__ == "__main__":
-    args = argparse.ArgumentParser()
-    args.add_argument('--ckpt_file',
-        type = str,
-        help = 'Model checkpoint file name')
-    args = args.parse_args()
+@hydra.main(config_path="src/config", config_name="config")
+def main(cfg: DictConfig):
 
     model = SimpleClassifier(
-        model_name = cfg.MODEL_NAME,
-        num_classes = cfg.NUM_CLASSES,
+        model_name = cfg.model_name,
+        num_classes = cfg.num_classes,
+        cfg = cfg
     )
 
     datamodule = TinyImageNetDatasetModule(
         batch_size = 1,
+        cfg = cfg
     )
 
     trainer = Trainer(
-        accelerator = cfg.ACCELERATOR,
-        devices = cfg.DEVICES,
-        precision = cfg.PRECISION_STR,
+        accelerator = cfg.accelerator,
+        devices = cfg.devices,
+        precision = cfg.precision_str,
         benchmark = True,
         inference_mode = True,
         logger = False,
     )
-
-    trainer.validate(model, ckpt_path = args.ckpt_file, datamodule = datamodule)
+    
+    if cfg.ckpt_file:
+        trainer.validate(model, ckpt_path = cfg.ckpt_file, datamodule = datamodule)
+    else:
+        print("No checkpoint file provided.")
 
     # FLOP counter
     x, y = next(iter(datamodule.test_dataloader()))
@@ -51,3 +53,6 @@ if __name__ == "__main__":
 
     with flop_counter:
         model(x)
+
+if __name__ == "__main__":
+    main()

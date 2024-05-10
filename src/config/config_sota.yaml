@@ -1,0 +1,62 @@
+hydra:
+    run:
+      dir: .
+    output_subdir: 'outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+    sweep:
+      dir: 'multirun/${hydra.job.override_dirname}'
+
+defaults:
+  - _self_
+
+model_name: 'SOTANetwork'
+
+# Training Hyperparameters
+num_classes: 200
+batch_size: 512
+val_every_n_epoch: 1
+num_epochs: 40
+
+optimizer:
+  type: 'lookahead'
+  sub_type: 'RAdam'
+  lr: 0.1
+  weight_decay: 0.01
+  k: 3
+
+scheduler:
+  type: 'Cosine'
+
+dropout: 0.5
+drop_prob: 0.2
+
+# Dataaset
+dataset_root_path: 'datasets/'
+num_workers: 8
+
+# Augmentation
+image_rotation: 20
+image_flip_prob: 0.5
+image_num_crops: 64
+image_pad_crops: 4
+image_mean: [0.4802, 0.4481, 0.3975]
+image_std: [0.2302, 0.2265, 0.2262]
+
+# Network
+# model_name: 'resnet18'
+model_name: 'MyNetwork'
+
+# Compute related
+accelerator: 'gpu'
+devices: [0]
+precision_str: '32-true'
+
+# Logging
+wandb:
+  project: 'aue8088-pa1'
+  entity: ${oc.env:WANDB_ENTITY, 'default_entity'}
+  save_dir: 'wandb/'
+  img_log_freq: 50
+  name: '${model_name}-B${batch_size}-Epo${num_epochs}-Drop${dropout}-opt[${optimizer.type},${optimizer.lr},${optimizer.momentum}]-sch[${scheduler.type},${scheduler.milestones},${scheduler.gamma}]'
+
+# Checkpoint file for testing
+ckpt_file: null

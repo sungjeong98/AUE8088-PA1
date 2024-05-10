@@ -9,3 +9,5 @@ torchvision==0.17.2
 tqdm==4.66.2
 wandb==0.16.6
 wget==3.2
+ptflops==0.7.3
+hydra-core==1.3.2

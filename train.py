@@ -12,37 +12,46 @@ import torch
 # Custom packages
 from src.dataset import TinyImageNetDatasetModule
 from src.network import SimpleClassifier
-import src.config as cfg
+import hydra
+from omegaconf import DictConfig, OmegaConf
+import wandb
 
 torch.set_float32_matmul_precision('medium')
 
 
-if __name__ == "__main__":
+@hydra.main(config_path="src/config", config_name="config")
+def main(cfg: DictConfig):
+    config_dict = OmegaConf.to_container(cfg, resolve=True)
+
+    optimizer = config_dict['optimizer']
+    scheduler = config_dict['scheduler']
 
     model = SimpleClassifier(
-        model_name = cfg.MODEL_NAME,
-        num_classes = cfg.NUM_CLASSES,
-        optimizer_params = cfg.OPTIMIZER_PARAMS,
-        scheduler_params = cfg.SCHEDULER_PARAMS,
+        model_name = cfg.model_name,
+        num_classes = cfg.num_classes,
+        optimizer_params = optimizer,
+        scheduler_params = scheduler,
+        cfg = cfg
     )
 
     datamodule = TinyImageNetDatasetModule(
-        batch_size = cfg.BATCH_SIZE,
+        batch_size = cfg.batch_size,
+        cfg = cfg
     )
 
     wandb_logger = WandbLogger(
-        project = cfg.WANDB_PROJECT,
-        save_dir = cfg.WANDB_SAVE_DIR,
-        entity = cfg.WANDB_ENTITY,
-        name = cfg.WANDB_NAME,
+        project = cfg.wandb.project,
+        save_dir = cfg.wandb.save_dir,
+        entity = cfg.wandb.entity,
+        name = cfg.wandb.name,
     )
 
     trainer = Trainer(
-        accelerator = cfg.ACCELERATOR,
-        devices = cfg.DEVICES,
-        precision = cfg.PRECISION_STR,
-        max_epochs = cfg.NUM_EPOCHS,
-        check_val_every_n_epoch = cfg.VAL_EVERY_N_EPOCH,
+        accelerator = cfg.accelerator,
+        devices = cfg.devices,
+        precision = cfg.precision_str,
+        max_epochs = cfg.num_epochs,
+        check_val_every_n_epoch = cfg.val_every_n_epoch,
         logger = wandb_logger,
         callbacks = [
             LearningRateMonitor(logging_interval='epoch'),
@@ -52,3 +61,7 @@ if __name__ == "__main__":
 
     trainer.fit(model, datamodule=datamodule)
     trainer.validate(ckpt_path='best', datamodule=datamodule)
+    wandb.finish()
+
+if __name__ == "__main__":
+    main()
